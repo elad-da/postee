@@ -21,8 +21,7 @@ func TestRegisterPlgnInvctn(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to open sqlmock database: %v", err)
 	}
-	rows := sqlxmock.NewRows([]string{"amount"}).AddRow(receivedKey)
-	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	defer db.Close()
 	pgDB := &Postgres{DB: db}
 
 	defer func() {
@@ -32,6 +31,9 @@ func TestRegisterPlgnInvctn(t *testing.T) {
 	expectedCnt := 3
 	keyToTest := "test"
 	for i := 0; i < expectedCnt; i++ {
+
+		rows := sqlxmock.NewRows([]string{"amount"}).AddRow(receivedKey)
+		mock.ExpectQuery("SELECT").WillReturnRows(rows)
 		if err := pgDB.RegisterPlgnInvctn(keyToTest); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

@@ -67,8 +67,7 @@ func TestApiKeyRenewal(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to open sqlmock database: %v", err)
 	}
-	rows := sqlxmock.NewRows([]string{"value"}).AddRow(receivedKey)
-	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	defer db.Close()
 	pgDB := &Postgres{DB: db}
 
 	defer func() {
@@ -80,6 +79,9 @@ func TestApiKeyRenewal(t *testing.T) {
 		if err := pgDB.EnsureApiKey(); err != nil {
 			t.Errorf("Unexpected EnsureApiKey error: %v", err)
 		}
+
+		rows := sqlxmock.NewRows([]string{"value"}).AddRow(receivedKey)
+		mock.ExpectQuery("SELECT").WillReturnRows(rows)
 		key, err := pgDB.GetApiKey()
 		if err != nil {
 			t.Fatal("error while getting value of API key")

@@ -52,8 +52,7 @@ func TestAggregateScans(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to open sqlmock database: %v", err)
 	}
-	rows := sqlxmock.NewRows([]string{"saving"}).AddRow(savingTest)
-	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	defer db.Close()
 	pgDB := &Postgres{DB: db}
 
 	for i := 0; i < len(tests); i++ {
@@ -68,6 +67,9 @@ func TestAggregateScans(t *testing.T) {
 		}()
 
 		test := tests[i]
+
+		rows := sqlxmock.NewRows([]string{"saving"}).AddRow(savingTest)
+		mock.ExpectQuery("SELECT").WillReturnRows(rows)
 		aggregated, err := pgDB.AggregateScans(test.output, test.currentScan, test.scansPerTicket, false)
 		if err != nil {
 			t.Errorf("AggregateScans Error: %v", err)
@@ -89,6 +91,8 @@ func TestAggregateScans(t *testing.T) {
 		}
 	}
 
+	rows := sqlxmock.NewRows([]string{"saving"}).AddRow(savingTest)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
 	// Test of existence last scan in DB
 	lastScan, err := pgDB.AggregateScans("jira", nil, 0, false)
 	if err != nil {
