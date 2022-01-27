@@ -427,8 +427,7 @@ func TestConfigFuncs(t *testing.T) {
 				assert.Contains(t, Instance().inputRoutes[test.routeName].Outputs, test.outputName)
 				assert.Equal(t, test.templateName, Instance().inputRoutes[test.routeName].Template, "one template expected")
 			}
-			if postgresDb, ok := dbservice.Db.(*postgresdb.PostgresDb); ok {
-				assert.Equal(t, test.psqlUrl, postgresDb.ConnectUrl, "url configured")
+			if postgresDb, ok := dbservice.Db.(*postgresdb.Postgres); ok {
 				assert.Equal(t, test.tenantName, postgresDb.TenantName, "tenantName configured")
 			}
 			if boltDb, ok := dbservice.Db.(*boltdb.BoltDb); ok {
@@ -541,7 +540,7 @@ var withPostgresParamsTest = func() error {
 	savedInitPostgresDb := postgresdb.InitPostgresDb
 	postgresdb.InitPostgresDb = func(connectUrl string) error { return nil }
 	savedGetCfgCacheSource := postgresdb.GetCfgCacheSource
-	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.PostgresDb) (string, error) {
+	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.Postgres) (string, error) {
 		j, _ := json.Marshal(outputSettings)
 		return string(j), nil
 	}
@@ -560,7 +559,7 @@ var withPostgresUrlTest = func() error {
 	savedInitPostgresDb := postgresdb.InitPostgresDb
 	postgresdb.InitPostgresDb = func(connectUrl string) error { return nil }
 	savedGetCfgCacheSource := postgresdb.GetCfgCacheSource
-	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.PostgresDb) (string, error) { return "", nil }
+	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.Postgres) (string, error) { return "", nil }
 	defer func() {
 		postgresdb.InitPostgresDb = savedInitPostgresDb
 		postgresdb.GetCfgCacheSource = savedGetCfgCacheSource
@@ -643,14 +642,14 @@ func TestSaveLoadCfgInPostgres(t *testing.T) {
 			AquaServer: "https://myserver.aquasec.com",
 		},
 	}
-	dbservice.Db = postgresdb.NewPostgresDb("tenantName", "connectUrl")
+	dbservice.Db = &postgresdb.Postgres{TenantName: "tenantName"}
 	savedUpdateCfgCacheSource := postgresdb.UpdateCfgCacheSource
-	postgresdb.UpdateCfgCacheSource = func(postgresDb *postgresdb.PostgresDb, cfgfile string) error {
+	postgresdb.UpdateCfgCacheSource = func(postgresDb *postgresdb.Postgres, cfgfile string) error {
 		savedCfgInPsql = cfgfile
 		return nil
 	}
 	savedGetCfgCacheSource := postgresdb.GetCfgCacheSource
-	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.PostgresDb) (string, error) {
+	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.Postgres) (string, error) {
 		return savedCfgInPsql, nil
 	}
 	defer func() {

@@ -81,8 +81,8 @@ func TestInitError(t *testing.T) {
 	initTablesErr := errors.New("init tables error")
 	testConnectErr := errors.New("test connect error")
 
-	savedPsqlConnect := psqlConnect
-	psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
+	savedPsqlConnect := PsqlConnect
+	PsqlConnect = func(connectUrl string) (*sqlx.DB, error) {
 		db, mock, err := sqlxmock.Newx()
 		if err != nil {
 			t.Errorf("failed to open sqlmock database: %v", err)
@@ -99,7 +99,7 @@ func TestInitError(t *testing.T) {
 	savedTestConnect := testConnect
 	testConnect = func(connectUrl string) (*sqlx.DB, error) { return nil, testConnectErr }
 	defer func() {
-		psqlConnect = savedPsqlConnect
+		PsqlConnect = savedPsqlConnect
 		testConnect = savedTestConnect
 	}()
 	err = InitPostgresDb("ConnectUrl")
@@ -119,7 +119,7 @@ func TestDeleteRowsByTenantNameAndTime(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
+			PsqlConnect = func(connectUrl string) (*sqlx.DB, error) {
 				savedDeleteRowsByTenantName := deleteRowsByTenantName
 				defer func() {
 					deleteRowsByTenantName = savedDeleteRowsByTenantName
@@ -135,7 +135,7 @@ func TestDeleteRowsByTenantNameAndTime(t *testing.T) {
 				}
 				return db, err
 			}
-			psqlDb, _ := psqlConnect(db.ConnectUrl)
+			psqlDb, _ := PsqlConnect(db.ConnectUrl)
 			err := deleteRowsByTenantNameAndTime(psqlDb, "tenantName", time.Now())
 			if !errors.Is(test.expectedError, err) {
 				t.Errorf("Unexpected error, expected: %v, got: %v", test.expectedError, err)
@@ -153,7 +153,7 @@ func TestDeleteRowsByTenantName(t *testing.T) {
 		{"bad delete row by tenantName", true, errors.New("delete rows error")},
 	}
 	for _, test := range tests {
-		psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
+		PsqlConnect = func(connectUrl string) (*sqlx.DB, error) {
 			savedDeleteRowsByTenantName := deleteRowsByTenantName
 			defer func() {
 				deleteRowsByTenantName = savedDeleteRowsByTenantName
@@ -169,7 +169,7 @@ func TestDeleteRowsByTenantName(t *testing.T) {
 			}
 			return db, err
 		}
-		psqlDb, _ := psqlConnect(db.ConnectUrl)
+		psqlDb, _ := PsqlConnect(db.ConnectUrl)
 		err := deleteRowsByTenantName(psqlDb, "table", "tenantName")
 		if !errors.Is(test.expectedError, err) {
 			t.Errorf("Unexpected error, expected: %v, got: %v", test.expectedError, err)
@@ -203,8 +203,8 @@ func TestInsert(t *testing.T) {
 	for _, insertFunc := range insertFuncs {
 		for _, test := range tests {
 			t.Run(insertFunc+test.name, func(t *testing.T) {
-				savedPsqlConnect := psqlConnect
-				psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
+				savedPsqlConnect := PsqlConnect
+				PsqlConnect = func(connectUrl string) (*sqlx.DB, error) {
 					db, mock, err := sqlxmock.Newx()
 					if err != nil {
 						t.Errorf("failed to open sqlmock database: %v", err)
@@ -223,10 +223,10 @@ func TestInsert(t *testing.T) {
 					return db, err
 				}
 				defer func() {
-					psqlConnect = savedPsqlConnect
+					PsqlConnect = savedPsqlConnect
 				}()
 
-				psqlDb, _ := psqlConnect(db.ConnectUrl)
+				psqlDb, _ := PsqlConnect(db.ConnectUrl)
 				err := runInsertFunc(psqlDb, insertFunc)
 				if err != nil {
 					if !errors.Is(err, test.expectedError) {
@@ -251,8 +251,8 @@ func TestInsertErrorSelect2Rows(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.f, func(t *testing.T) {
-			savedPsqlConnect := psqlConnect
-			psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
+			savedPsqlConnect := PsqlConnect
+			PsqlConnect = func(connectUrl string) (*sqlx.DB, error) {
 				db, mock, err := sqlxmock.Newx()
 				if err != nil {
 					t.Errorf("failed to open sqlmock database: %v", err)
@@ -262,9 +262,9 @@ func TestInsertErrorSelect2Rows(t *testing.T) {
 				return db, err
 			}
 			defer func() {
-				psqlConnect = savedPsqlConnect
+				PsqlConnect = savedPsqlConnect
 			}()
-			psqlDb, _ := psqlConnect(db.ConnectUrl)
+			psqlDb, _ := PsqlConnect(db.ConnectUrl)
 			err := runInsertFunc(psqlDb, test.f)
 			if err == nil {
 				t.Errorf("no error, expected: %s", test.expectedError)

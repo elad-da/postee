@@ -266,18 +266,18 @@ func TestApplyPostgresCfg(t *testing.T) {
 	demoCtx := wrap.instance
 
 	savedDb := dbservice.Db
-	dbservice.Db = &postgresdb.PostgresDb{}
+	dbservice.Db = &postgresdb.Postgres{}
 
 	postgresUrl := "postgres://User:Password@DbHostName:Port/DbName?sslmode=SslMode"
 
 	savedGetCfgCacheSource := postgresdb.GetCfgCacheSource
-	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.PostgresDb) (string, error) {
+	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.Postgres) (string, error) {
 		cfg, _ := json.Marshal(testTenantSerrings)
 		return string(cfg), nil
 	}
 
 	savedUpdateCfgCacheSource := postgresdb.UpdateCfgCacheSource
-	postgresdb.UpdateCfgCacheSource = func(postgresDb *postgresdb.PostgresDb, cfgfile string) error { return nil }
+	postgresdb.UpdateCfgCacheSource = func(postgresDb *postgresdb.Postgres, cfgfile string) error { return nil }
 
 	savedInitPostgresDb := postgresdb.InitPostgresDb
 	postgresdb.InitPostgresDb = func(connectUrl string) error { return nil }

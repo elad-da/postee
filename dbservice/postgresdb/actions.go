@@ -9,16 +9,10 @@ import (
 	"github.com/aquasecurity/postee/dbservice/dbparam"
 )
 
-func (postgresDb *PostgresDb) MayBeStoreMessage(message []byte, messageKey string, expired *time.Time) (wasStored bool, err error) {
-	db, err := psqlConnect(postgresDb.ConnectUrl)
-	if err != nil {
-		return false, err
-	}
-	defer db.Close()
-
+func (p *Postgres) MayBeStoreMessage(message []byte, messageKey string, expired *time.Time) (wasStored bool, err error) {
 	currentValue := ""
 	sqlQuery := fmt.Sprintf("SELECT messageValue FROM %s WHERE (tenantName=$1 AND messageKey=$2)", dbparam.DbBucketName)
-	if err = db.Get(&currentValue, sqlQuery, postgresDb.TenantName, messageKey); err != nil {
+	if err = p.DB.Get(&currentValue, sqlQuery, p.TenantName, messageKey); err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return false, err
 		}
@@ -27,7 +21,7 @@ func (postgresDb *PostgresDb) MayBeStoreMessage(message []byte, messageKey strin
 	if currentValue != "" {
 		return false, nil
 	} else {
-		if err = insertInTableName(db, postgresDb.TenantName, messageKey, message, expired); err != nil {
+		if err = insertInTableName(p.DB, p.TenantName, messageKey, message, expired); err != nil {
 			return false, err
 		}
 		return true, nil

@@ -35,7 +35,7 @@ func WithFileConfig(cfgPath string) error {
 
 func WithNewConfig(tenantName string) error { //tenant name
 	Instance().Terminate()
-	if err := dbservice.ConfigureDb(defaultDbPath, "", ""); err != nil {
+	if err := dbservice.ConfigureBoltDB(defaultDbPath); err != nil {
 		return err
 	}
 	Instance().cleanChannels(true)
@@ -45,7 +45,7 @@ func WithNewConfig(tenantName string) error { //tenant name
 //initialize instance with custom db location
 func WithNewConfigAndDbPath(tenantName, dbPath string) error { //tenant name
 	Instance().Terminate()
-	if err := dbservice.ConfigureDb(dbPath, "", ""); err != nil {
+	if err := dbservice.ConfigureBoltDB(dbPath); err != nil {
 		return err
 	}
 	Instance().cleanChannels(true)

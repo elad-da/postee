@@ -19,32 +19,30 @@ func TestExpiredDates(t *testing.T) {
 		{"bad delete rows", true, false},
 	}
 
+	savedDeleteRow := deleteRowsByTenantNameAndTime
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			deleted := false
-			savedPsqlConnect := psqlConnect
-			psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
-				db, _, err := sqlxmock.Newx()
-				if err != nil {
-					t.Errorf("failed to open sqlmock database: %v", err)
-				}
-				return db, err
+
+			db, _, err := sqlxmock.Newx()
+			if err != nil {
+				t.Errorf("failed to open sqlmock database: %v", err)
 			}
-			savedDeleteRow := deleteRowsByTenantNameAndTime
+			pgDB := &Postgres{DB: db}
+
 			deleteRowsByTenantNameAndTime = func(db *sqlx.DB, tenantName string, t time.Time) error {
 				if !test.deleteError {
 					deleted = true
 				}
 				return nil
 			}
-			defer func() {
-				psqlConnect = savedPsqlConnect
-				deleteRowsByTenantNameAndTime = savedDeleteRow
-			}()
-			db.CheckExpiredData()
+
+			pgDB.CheckExpiredData()
 			if deleted != test.wasDeleted {
 				t.Errorf("error deleted rows")
 			}
+
+			deleteRowsByTenantNameAndTime = savedDeleteRow
 		})
 	}
 }
@@ -63,30 +61,28 @@ func TestSizeLimit(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			deleted := false
-			savedPsqlConnect := psqlConnect
-			psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
-				db, mock, err := sqlxmock.Newx()
-				if err != nil {
-					t.Errorf("failed to open sqlmock database: %v", err)
-				}
-				rows := sqlxmock.NewRows([]string{"size"}).AddRow(test.size)
-				mock.ExpectQuery("SELECT").WillReturnRows(rows)
-				return db, err
+
+			db, mock, err := sqlxmock.Newx()
+			if err != nil {
+				t.Errorf("failed to open sqlmock database: %v", err)
 			}
+			rows := sqlxmock.NewRows([]string{"size"}).AddRow(test.size)
+			mock.ExpectQuery("SELECT").WillReturnRows(rows)
+			pgDB := &Postgres{DB: db}
+
 			savedDeleteRowsByTenantName := deleteRowsByTenantName
 			deleteRowsByTenantName = func(db *sqlx.DB, table, tenantName string) error {
 				deleted = true
 				return nil
 			}
-			defer func() {
-				psqlConnect = savedPsqlConnect
-				deleteRowsByTenantName = savedDeleteRowsByTenantName
-			}()
+
 			dbparam.DbSizeLimit = test.sizeLimit
-			db.CheckSizeLimit()
+			pgDB.CheckSizeLimit()
 			if deleted != test.wasDeleted {
 				t.Errorf("error deleted rows")
 			}
+
+			deleteRowsByTenantName = savedDeleteRowsByTenantName
 		})
 	}
 }

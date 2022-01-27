@@ -24,25 +24,33 @@ type DbProvider interface {
 	GetApiKey() (string, error)
 }
 
-func ConfigureDb(pathToDb, postgresUrl, tenantName string) error {
-
+func ConfigureStorage(boltDBPath, postgresUrl, tenantName string) error {
 	if postgresUrl != "" {
-		if tenantName == "" {
-			return errConfigPsqlEmptyTenantName
-		}
-		postgresDb := postgresdb.NewPostgresDb(tenantName, postgresUrl)
-		if err := postgresdb.InitPostgresDb(postgresDb.ConnectUrl); err != nil {
+		return ConfigurePostgresDB(postgresUrl, tenantName)
+	}
+
+	return ConfigureBoltDB(boltDBPath)
+}
+
+func ConfigureBoltDB(pathToDb string) error {
+	boltdb := boltdb.NewBoltDb()
+	if pathToDb != "" {
+		if err := boltdb.SetNewDbPath(pathToDb); err != nil {
 			return err
 		}
-		Db = postgresDb
-	} else {
-		boltdb := boltdb.NewBoltDb()
-		if pathToDb != "" {
-			if err := boltdb.SetNewDbPath(pathToDb); err != nil {
-				return err
-			}
-		}
-		Db = boltdb
 	}
+	Db = boltdb
+	return nil
+}
+
+func ConfigurePostgresDB(postgresUrl, tenantName string) error {
+	if tenantName == "" {
+		return errConfigPsqlEmptyTenantName
+	}
+	postgresDb, err := postgresdb.New(postgresUrl, tenantName)
+	if err != nil {
+		return err
+	}
+	Db = postgresDb
 	return nil
 }

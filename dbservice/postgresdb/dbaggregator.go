@@ -9,16 +9,10 @@ import (
 	"github.com/aquasecurity/postee/dbservice/dbparam"
 )
 
-func (postgresDb *PostgresDb) AggregateScans(output string,
+func (p *Postgres) AggregateScans(output string,
 	currentScan map[string]string,
 	scansPerTicket int,
 	ignoreTheQuantity bool) ([]map[string]string, error) {
-
-	db, err := psqlConnect(postgresDb.ConnectUrl)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
 
 	aggregatedScans := make([]map[string]string, 0, scansPerTicket)
 	if len(currentScan) > 0 {
@@ -26,7 +20,8 @@ func (postgresDb *PostgresDb) AggregateScans(output string,
 	}
 	currentValue := []byte{}
 	sqlQuery := fmt.Sprintf("SELECT %s FROM %s WHERE (tenantName=$1 AND %s=$2)", "saving", dbparam.DbBucketAggregator, "output")
-	if err = db.Get(&currentValue, sqlQuery, postgresDb.TenantName, output); err != nil {
+	err := p.DB.Get(&currentValue, sqlQuery, p.TenantName, output)
+	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return nil, err
 		}
@@ -46,13 +41,13 @@ func (postgresDb *PostgresDb) AggregateScans(output string,
 		if err != nil {
 			return nil, err
 		}
-		if err = insertInTableAggregator(db, postgresDb.TenantName, output, saving); err != nil {
+		if err = insertInTableAggregator(p.DB, p.TenantName, output, saving); err != nil {
 
 			return nil, err
 		}
 		return nil, nil
 	}
-	if err = insertInTableAggregator(db, postgresDb.TenantName, output, nil); err != nil {
+	if err = insertInTableAggregator(p.DB, p.TenantName, output, nil); err != nil {
 		return nil, err
 	}
 	return aggregatedScans, nil

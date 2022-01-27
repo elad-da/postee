@@ -47,6 +47,7 @@ type Router struct {
 	synchronous            bool
 	inputCallBacks         map[string][]InputCallbackFunc
 	databaseCfgCacheSource *data.TenantSettings
+	db                     *postgresdb.Postgres
 }
 
 var (
@@ -112,8 +113,16 @@ func (ctx *Router) ApplyFileCfg(cfgfile, postgresUrl, pathToDb string, synchrono
 		return err
 	}
 
-	if err = dbservice.ConfigureDb(pathToDb, postgresUrl, tenant.Name); err != nil {
-		return err
+	if postgresUrl != "" {
+		ctx.db, err = postgresdb.New(postgresUrl, tenant.Name)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = dbservice.ConfigureBoltDB(pathToDb)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = ctx.applyTenantCfg(tenant, synchronous)
@@ -125,8 +134,10 @@ func (ctx *Router) ApplyFileCfg(cfgfile, postgresUrl, pathToDb string, synchrono
 
 func (ctx *Router) ApplyPostgresCfg(tenantName, postgresUrl string, synchronous bool) error {
 	log.Logger.Info("Starting Router....")
+	var err error
 
-	if err := dbservice.ConfigureDb("", postgresUrl, tenantName); err != nil {
+	ctx.db, err = postgresdb.New(postgresUrl, tenantName)
+	if err != nil {
 		return err
 	}
 
@@ -509,7 +520,7 @@ func removeOutputFromCfgCacheSource(outputs *data.TenantSettings, outputName str
 
 func (ctx *Router) saveCfgCacheSourceInPostgres() error {
 	cfg := ctx.databaseCfgCacheSource
-	if postgresDb, ok := dbservice.Db.(*postgresdb.PostgresDb); ok {
+	if postgresDb, ok := dbservice.Db.(*postgresdb.Postgres); ok {
 		cfgFile, err := json.Marshal(cfg)
 		if err != nil {
 			return err
@@ -523,7 +534,7 @@ func (ctx *Router) saveCfgCacheSourceInPostgres() error {
 
 func (ctx *Router) loadCfgCacheSourceFromPostgres() (*data.TenantSettings, error) {
 	cfg := &data.TenantSettings{}
-	if postgresDb, ok := dbservice.Db.(*postgresdb.PostgresDb); ok {
+	if postgresDb, ok := dbservice.Db.(*postgresdb.Postgres); ok {
 		cfgFile, err := postgresdb.GetCfgCacheSource(postgresDb)
 		if err != nil {
 			return cfg, err

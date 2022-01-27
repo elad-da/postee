@@ -11,26 +11,24 @@ import (
 func TestApiKey(t *testing.T) {
 	savedInsertInTableSharedConfig := insertInTableSharedConfig
 	insertInTableSharedConfig = func(db *sqlx.DB, tenantName, apikeyname, value string) error { return nil }
-	savedPsqlConnect := psqlConnect
-	psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
-		db, mock, err := sqlxmock.Newx()
-		if err != nil {
-			t.Errorf("failed to open sqlmock database: %v", err)
-		}
-		rows := sqlxmock.NewRows([]string{"value"}).AddRow("key")
-		mock.ExpectQuery("SELECT").WillReturnRows(rows)
-		return db, err
+
+	db, mock, err := sqlxmock.Newx()
+	if err != nil {
+		t.Errorf("failed to open sqlmock database: %v", err)
 	}
+	rows := sqlxmock.NewRows([]string{"value"}).AddRow("key")
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	pgDB := &Postgres{DB: db}
+
 	defer func() {
 		insertInTableSharedConfig = savedInsertInTableSharedConfig
-		psqlConnect = savedPsqlConnect
 	}()
 
-	if err := db.EnsureApiKey(); err != nil {
+	if err := pgDB.EnsureApiKey(); err != nil {
 		t.Errorf("Unexpected EnsureApiKey error: %v", err)
 	}
 
-	key, err := db.GetApiKey()
+	key, err := pgDB.GetApiKey()
 	if err != nil {
 		t.Fatal("error while getting value of API key")
 	}
@@ -40,19 +38,15 @@ func TestApiKey(t *testing.T) {
 }
 
 func TestApiKeyWithoutInit(t *testing.T) {
-	savedPsqlConnect := psqlConnect
-	psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
-		db, mock, err := sqlxmock.Newx()
-		if err != nil {
-			t.Errorf("failed to open sqlmock database: %v", err)
-		}
-		mock.ExpectQuery("SELECT").WillReturnError(sql.ErrNoRows)
-		return db, err
+
+	db, mock, err := sqlxmock.Newx()
+	if err != nil {
+		t.Errorf("failed to open sqlmock database: %v", err)
 	}
-	defer func() {
-		psqlConnect = savedPsqlConnect
-	}()
-	key, err := db.GetApiKey()
+	mock.ExpectQuery("SELECT").WillReturnError(sql.ErrNoRows)
+	pgDB := &Postgres{DB: db}
+
+	key, err := pgDB.GetApiKey()
 	if err == nil {
 		t.Fatal("Error is expected")
 	}
@@ -68,27 +62,25 @@ func TestApiKeyRenewal(t *testing.T) {
 		receivedKey = value
 		return nil
 	}
-	savedPsqlConnect := psqlConnect
-	psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
-		db, mock, err := sqlxmock.Newx()
-		if err != nil {
-			t.Errorf("failed to open sqlmock database: %v", err)
-		}
-		rows := sqlxmock.NewRows([]string{"value"}).AddRow(receivedKey)
-		mock.ExpectQuery("SELECT").WillReturnRows(rows)
-		return db, err
+
+	db, mock, err := sqlxmock.Newx()
+	if err != nil {
+		t.Errorf("failed to open sqlmock database: %v", err)
 	}
+	rows := sqlxmock.NewRows([]string{"value"}).AddRow(receivedKey)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	pgDB := &Postgres{DB: db}
+
 	defer func() {
 		insertInTableSharedConfig = savedInsertInTableSharedConfig
-		psqlConnect = savedPsqlConnect
 	}()
 
 	var keys [2]string
 	for i := 0; i < 2; i++ {
-		if err := db.EnsureApiKey(); err != nil {
+		if err := pgDB.EnsureApiKey(); err != nil {
 			t.Errorf("Unexpected EnsureApiKey error: %v", err)
 		}
-		key, err := db.GetApiKey()
+		key, err := pgDB.GetApiKey()
 		if err != nil {
 			t.Fatal("error while getting value of API key")
 		}

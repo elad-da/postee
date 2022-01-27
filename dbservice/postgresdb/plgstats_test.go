@@ -16,25 +16,23 @@ func TestRegisterPlgnInvctn(t *testing.T) {
 		receivedKey = amount
 		return nil
 	}
-	savedPsqlConnect := psqlConnect
-	psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
-		db, mock, err := sqlxmock.Newx()
-		if err != nil {
-			t.Errorf("failed to open sqlmock database: %v", err)
-		}
-		rows := sqlxmock.NewRows([]string{"amount"}).AddRow(receivedKey)
-		mock.ExpectQuery("SELECT").WillReturnRows(rows)
-		return db, err
+
+	db, mock, err := sqlxmock.Newx()
+	if err != nil {
+		t.Errorf("failed to open sqlmock database: %v", err)
 	}
+	rows := sqlxmock.NewRows([]string{"amount"}).AddRow(receivedKey)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows)
+	pgDB := &Postgres{DB: db}
+
 	defer func() {
 		insertOutputStats = savedInsertOutputStats
-		psqlConnect = savedPsqlConnect
 	}()
 
 	expectedCnt := 3
 	keyToTest := "test"
 	for i := 0; i < expectedCnt; i++ {
-		if err := db.RegisterPlgnInvctn(keyToTest); err != nil {
+		if err := pgDB.RegisterPlgnInvctn(keyToTest); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 	}
@@ -56,27 +54,32 @@ func TestRegisterPlgnInvctnErrors(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			savedInsertOutputStats := insertOutputStats
 			insertOutputStats = func(db *sqlx.DB, tenantName, outputName string, amount int) error { return nil }
-			savedPsqlConnect := psqlConnect
-			psqlConnect = func(connectUrl string) (*sqlx.DB, error) {
-				db, mock, err := sqlxmock.Newx()
-				if err != nil {
-					t.Errorf("failed to open sqlmock database: %v", err)
-				}
-				mock.ExpectQuery("SELECT").WillReturnError(test.errIn)
-				return db, err
+
+			db, mock, err := sqlxmock.Newx()
+			if err != nil {
+				t.Errorf("failed to open sqlmock database: %v", err)
 			}
-			defer func() {
-				psqlConnect = savedPsqlConnect
-				insertOutputStats = savedInsertOutputStats
-			}()
-			err := db.RegisterPlgnInvctn("testName")
+			mock.ExpectQuery("SELECT").WillReturnError(test.errIn)
+			pgDB := &Postgres{DB: db}
+
+			err = pgDB.RegisterPlgnInvctn("testName")
 			if !errors.Is(err, test.expectedErr) {
 				t.Errorf("Errors no contains: expected: %v, got: %v", test.expectedErr, err)
 			}
+
+			insertOutputStats = savedInsertOutputStats
+
 		})
 	}
 
-	key, err := db.GetApiKey()
+	db, mock, err := sqlxmock.Newx()
+	if err != nil {
+		t.Errorf("failed to open sqlmock database: %v", err)
+	}
+	mock.ExpectQuery("SELECT").WillReturnError(sql.ErrConnDone)
+	pgDB := &Postgres{DB: db}
+
+	key, err := pgDB.GetApiKey()
 	if err == nil {
 		t.Fatal("Error is expected")
 	}
