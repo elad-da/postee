@@ -16,7 +16,7 @@ func New(connectURL string, tenantName string) (*Postgres, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = initAllTables(db)
+	err = InitAllTables(db)
 	if err != nil {
 		return nil, err
 	}

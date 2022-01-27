@@ -14,6 +14,7 @@ import (
 	"github.com/aquasecurity/postee/dbservice/postgresdb"
 	"github.com/aquasecurity/postee/outputs" //nolint - used to get Output type in TestEditOutput
 	"github.com/aquasecurity/postee/routes"
+	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -537,16 +538,21 @@ var withDefaultConfigAndDbPathTest = func() error {
 }
 
 var withPostgresParamsTest = func() error {
-	savedInitPostgresDb := postgresdb.InitPostgresDb
-	postgresdb.InitPostgresDb = func(connectUrl string) error { return nil }
+	savedInitPostgresDb := postgresdb.PsqlConnect
+	postgresdb.PsqlConnect = func(connectUrl string) (*sqlx.DB, error) { return &sqlx.DB{}, nil }
+
+	savedInitTables := postgresdb.InitAllTables
+	postgresdb.InitAllTables = func(db *sqlx.DB) error { return nil }
+
 	savedGetCfgCacheSource := postgresdb.GetCfgCacheSource
 	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.Postgres) (string, error) {
 		j, _ := json.Marshal(outputSettings)
 		return string(j), nil
 	}
 	defer func() {
-		postgresdb.InitPostgresDb = savedInitPostgresDb
+		postgresdb.PsqlConnect = savedInitPostgresDb
 		postgresdb.GetCfgCacheSource = savedGetCfgCacheSource
+		postgresdb.InitAllTables = savedInitTables
 	}()
 	err := WithPostgresParams("ParamsTenantName", "ParamsDbName", "ParamsDbHostName", "543", "ParamsUser", "ParamsPassword", "ParamsSslMode")
 	if err != nil {
@@ -556,13 +562,18 @@ var withPostgresParamsTest = func() error {
 }
 
 var withPostgresUrlTest = func() error {
-	savedInitPostgresDb := postgresdb.InitPostgresDb
-	postgresdb.InitPostgresDb = func(connectUrl string) error { return nil }
+	savedInitPostgresDb := postgresdb.PsqlConnect
+	postgresdb.PsqlConnect = func(connectUrl string) (*sqlx.DB, error) { return &sqlx.DB{}, nil }
+
+	savedInitTables := postgresdb.InitAllTables
+	postgresdb.InitAllTables = func(db *sqlx.DB) error { return nil }
+
 	savedGetCfgCacheSource := postgresdb.GetCfgCacheSource
 	postgresdb.GetCfgCacheSource = func(postgresDb *postgresdb.Postgres) (string, error) { return "", nil }
 	defer func() {
-		postgresdb.InitPostgresDb = savedInitPostgresDb
+		postgresdb.PsqlConnect = savedInitPostgresDb
 		postgresdb.GetCfgCacheSource = savedGetCfgCacheSource
+		postgresdb.InitAllTables = savedInitTables
 	}()
 	psqlUrl := "postgres://ParamsUser:ParamsPassword@ParamsDbHostName:543/ParamsDbName?sslmode=ParamsSslMode"
 	if err := WithPostgresUrl(tenantName, psqlUrl); err != nil {

@@ -17,7 +17,7 @@ var (
 	}
 )
 
-var initAllTables = func(db *sqlx.DB) error {
+var InitAllTables = func(db *sqlx.DB) error {
 	for _, schema := range tableSchemas {
 		_, err := db.Exec(schema)
 		if err != nil {
@@ -34,7 +34,7 @@ var InitPostgresDb = func(connectUrl string) error {
 	}
 	defer db.Close()
 
-	err = initAllTables(db)
+	err = InitAllTables(db)
 	if err != nil {
 		return err
 	}

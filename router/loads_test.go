@@ -16,6 +16,7 @@ import (
 	"github.com/aquasecurity/postee/msgservice"
 	"github.com/aquasecurity/postee/outputs"
 	"github.com/aquasecurity/postee/routes"
+	"github.com/jmoiron/sqlx"
 )
 
 var (
@@ -279,14 +280,18 @@ func TestApplyPostgresCfg(t *testing.T) {
 	savedUpdateCfgCacheSource := postgresdb.UpdateCfgCacheSource
 	postgresdb.UpdateCfgCacheSource = func(postgresDb *postgresdb.Postgres, cfgfile string) error { return nil }
 
-	savedInitPostgresDb := postgresdb.InitPostgresDb
-	postgresdb.InitPostgresDb = func(connectUrl string) error { return nil }
+	savedInitPostgresDb := postgresdb.PsqlConnect
+	postgresdb.PsqlConnect = func(connectUrl string) (*sqlx.DB, error) { return &sqlx.DB{}, nil }
+
+	savedInitTables := postgresdb.InitAllTables
+	postgresdb.InitAllTables = func(db *sqlx.DB) error { return nil }
 	defer func() {
 		wrap.teardown()
 		dbservice.Db = savedDb
 		postgresdb.GetCfgCacheSource = savedGetCfgCacheSource
-		postgresdb.InitPostgresDb = savedInitPostgresDb
+		postgresdb.PsqlConnect = savedInitPostgresDb
 		postgresdb.UpdateCfgCacheSource = savedUpdateCfgCacheSource
+		postgresdb.InitAllTables = savedInitTables
 	}()
 
 	err := demoCtx.ApplyPostgresCfg("tenantName", postgresUrl, false)
