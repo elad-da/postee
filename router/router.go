@@ -690,6 +690,8 @@ func (ctx *Router) publishOutput(msgSvc service, outputName string, msg map[stri
 		templateName = template
 	}
 
+	log.Logger.Infof("CHOSEN Template: %s", templateName)
+
 	tmpl, ok := ctx.templates.Load(templateName)
 	if !ok {
 		return data.OutputResponse{}, fmt.Errorf("Route %q (output: %s) contains reference to undefined or misconfigured template %q.",
@@ -905,6 +907,7 @@ func (ctx *Router) embedTemplates() error {
 
 // selectRepositoryTemplateByResourceTypeKey chooses iac template by ResourceTypeKey and output. It currently works only for servicenow, jira templates.
 func selectRepositoryTemplateByResourceTypeKey(msg map[string]interface{}, outputType string) string {
+	log.Logger.Infof("SELECTING Supply-Chain Template, resourceTypeKey: %s, OutputType: %s", msg[resourceTypeKey], outputType)
 	// if msg doesn't have `resourceTypeKey` or `resourceTypeKey` != `code-repository` => don't need to change template
 	if key, ok := msg[resourceTypeKey]; !ok || key != codeRepositoryKey {
 		return ""
